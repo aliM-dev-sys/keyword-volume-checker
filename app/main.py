@@ -47,26 +47,27 @@ def check_volume(
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/check-batch")
-def check_batch_volume(
-    keywords: List[str],
-    country: str,
-    method: str = "combined"
-):
+def check_batch_volume(request: dict):
     """
     Returns keyword search volumes for multiple keywords in a specific country.
     """
-    if country not in SUPPORTED_COUNTRIES:
-        raise HTTPException(status_code=400, detail=f"Unsupported country. Must be one of: {', '.join(SUPPORTED_COUNTRIES)}")
-    
-    if not keywords or len(keywords) == 0:
-        raise HTTPException(status_code=400, detail="At least one keyword is required")
-    
-    # Clean and validate keywords
-    cleaned_keywords = [k.strip() for k in keywords if k.strip()]
-    if not cleaned_keywords:
-        raise HTTPException(status_code=400, detail="No valid keywords provided")
-    
     try:
+        # Extract data from request body
+        keywords = request.get("keywords", [])
+        country = request.get("country", "US")
+        method = request.get("method", "combined")
+        
+        if country not in SUPPORTED_COUNTRIES:
+            raise HTTPException(status_code=400, detail=f"Unsupported country. Must be one of: {', '.join(SUPPORTED_COUNTRIES)}")
+        
+        if not keywords or len(keywords) == 0:
+            raise HTTPException(status_code=400, detail="At least one keyword is required")
+        
+        # Clean and validate keywords
+        cleaned_keywords = [k.strip() for k in keywords if k.strip()]
+        if not cleaned_keywords:
+            raise HTTPException(status_code=400, detail="No valid keywords provided")
+        
         results = get_batch_keyword_volume(cleaned_keywords, country, method)
         return {
             "country": country,
@@ -74,6 +75,8 @@ def check_batch_volume(
             "total_keywords": len(cleaned_keywords),
             "results": results
         }
+    except HTTPException:
+        raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
