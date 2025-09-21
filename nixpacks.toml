@@ -1,0 +1,12 @@
+[phases.setup]
+nixPkgs = ["python3", "gcc", "curl"]
+
+[phases.install]
+cmds = ["pip install -r requirements.txt"]
+
+[phases.start]
+cmd = "python -c \"import app.main; print('App imported successfully'); import uvicorn; uvicorn.run('app.main:app', host='0.0.0.0', port=8001, log_level='debug')\""
+
+[variables]
+PYTHONPATH = "/app"
+CACHE_DB_PATH = "/app/data/keyword_volumes.db"

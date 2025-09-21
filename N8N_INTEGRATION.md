@@ -10,7 +10,64 @@ This guide shows you how to integrate the Keyword Volume Checker with n8n workfl
 
 ## Quick Start
 
-### 1. Basic Single Keyword Check
+### 1. N8N Webhook Integration (Recommended)
+
+**Node Configuration:**
+- **Node Type**: HTTP Request
+- **Method**: POST
+- **URL**: `http://your-server:8001/n8n/check-keywords`
+- **Headers**:
+  - `Content-Type`: `application/json`
+- **Body** (JSON): Send your n8n webhook data directly
+
+**Example Input Data (from n8n webhook):**
+```json
+[
+  {
+    "keywords": [
+      "IPTV restream business models US entrepreneurs",
+      "Monetization strategies IPTV streaming US",
+      "IPTV service revenue generation US",
+      "Launching IPTV restream platform US",
+      "Subscription video on demand business US"
+    ],
+    "geo": "US",
+    "method": "combined"
+  }
+]
+```
+
+**Expected Output:**
+```json
+{
+  "success": true,
+  "country": "US",
+  "method": "combined",
+  "total_keywords": 5,
+  "keywords": [
+    "IPTV restream business models US entrepreneurs",
+    "Monetization strategies IPTV streaming US",
+    "IPTV service revenue generation US",
+    "Launching IPTV restream platform US",
+    "Subscription video on demand business US"
+  ],
+  "results": [
+    {
+      "keyword": "IPTV restream business models US entrepreneurs",
+      "country": "US",
+      "volume": 8500
+    },
+    {
+      "keyword": "Monetization strategies IPTV streaming US",
+      "country": "US",
+      "volume": 12000
+    }
+  ],
+  "timestamp": "2025-01-21T10:30:00.000Z"
+}
+```
+
+### 2. Basic Single Keyword Check
 
 **Node Configuration:**
 - **Node Type**: HTTP Request
@@ -259,6 +316,81 @@ if (responseTime > 5000) {
 - Find related keywords for existing content
 - Identify keyword gaps
 - Optimize content for better search visibility
+
+## N8N Integration Testing
+
+### 1. Test Endpoint
+
+Use the test endpoint to debug your n8n input format:
+
+**Node Configuration:**
+- **Node Type**: HTTP Request
+- **Method**: POST
+- **URL**: `http://your-server:8001/n8n/test`
+- **Body**: Send your exact n8n webhook data
+
+**Expected Output:**
+```json
+{
+  "received_data": { /* your input data */ },
+  "data_type": "list",
+  "keys": ["keywords", "geo", "method"],
+  "timestamp": "2025-01-21T10:30:00.000Z"
+}
+```
+
+### 2. Supported Input Formats
+
+The n8n endpoint accepts multiple input formats:
+
+**Format 1: Array (Webhook)**
+```json
+[
+  {
+    "keywords": ["keyword1", "keyword2"],
+    "geo": "US",
+    "method": "combined"
+  }
+]
+```
+
+**Format 2: Direct Object**
+```json
+{
+  "keywords": ["keyword1", "keyword2"],
+  "geo": "US",
+  "method": "combined"
+}
+```
+
+**Format 3: With Additional Fields (Ignored)**
+```json
+[
+  {
+    "keywords": ["keyword1", "keyword2"],
+    "geo": "US",
+    "method": "combined",
+    "startTime": "2025-08-01T00:00:00.000Z",
+    "endTime": "2025-08-31T00:00:00.000Z",
+    "userId": "030874c9-55aa-4d20-8ece-5140fba0b798"
+  }
+]
+```
+
+### 3. Geo Code Mapping
+
+The endpoint automatically maps common geo codes:
+
+| Input | Mapped To |
+|-------|-----------|
+| "US" | "US" |
+| "United States" | "US" |
+| "UK" | "UK" |
+| "United Kingdom" | "UK" |
+| "CA" | "CA" |
+| "Canada" | "CA" |
+| "SA" | "SA" |
+| "South Africa" | "SA" |
 
 ## Troubleshooting
 

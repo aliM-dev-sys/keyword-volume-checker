@@ -4,6 +4,7 @@ from typing import List
 import json
 import csv
 import io
+from datetime import datetime
 from app.services import get_keyword_volume, get_batch_keyword_volume, get_method_info, clear_cache
 from app.config import SUPPORTED_COUNTRIES
 
@@ -89,8 +90,11 @@ async def dashboard():
             }
             
             async function checkBatch() {
-                const keywords = document.getElementById('keywords').value.split('\\n').filter(k => k.trim());
+                const keywords = document.getElementById('keywords').value.split('\n').filter(k => k.trim());
                 const country = document.getElementById('batchCountry').value;
+                
+                console.log('Keywords:', keywords);
+                console.log('Country:', country);
                 
                 if (keywords.length === 0) {
                     showResult('Please enter at least one keyword', 'error');
@@ -103,6 +107,12 @@ async def dashboard():
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ keywords, country })
                     });
+                    
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`HTTP ${response.status}: ${errorData.detail || errorData.message || 'Unknown error'}`);
+                    }
+                    
                     const data = await response.json();
                     
                     if (data.error) {
@@ -200,16 +210,85 @@ def check_batch_volume(
     if not keywords or len(keywords) == 0:
         raise HTTPException(status_code=400, detail="At least one keyword is required")
     
+    # Clean and validate keywords
+    cleaned_keywords = [k.strip() for k in keywords if k.strip()]
+    if not cleaned_keywords:
+        raise HTTPException(status_code=400, detail="No valid keywords provided")
+    
     try:
-        results = get_batch_keyword_volume(keywords, country, method)
+        results = get_batch_keyword_volume(cleaned_keywords, country, method)
         return {
             "country": country,
             "method": method,
-            "total_keywords": len(keywords),
+            "total_keywords": len(cleaned_keywords),
             "results": results
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/n8n/check-keywords")
+def n8n_check_keywords(request: dict):
+    """
+    N8N-specific endpoint that handles the webhook format from n8n.
+    Expects: { "keywords": [...], "geo": "US", "method": "combined" }
+    """
+    try:
+        # Extract data from n8n webhook format
+        if isinstance(request, list) and len(request) > 0:
+            # Handle array format (webhook data)
+            data = request[0]
+        else:
+            # Handle direct object format
+            data = request
+        
+        # Extract keywords and geo
+        keywords = data.get("keywords", [])
+        geo = data.get("geo", "US")
+        method = data.get("method", "combined")
+        
+        # Validate geo (convert to supported format if needed)
+        geo_mapping = {
+            "US": "US",
+            "UK": "UK", 
+            "CA": "CA",
+            "SA": "SA",
+            "United States": "US",
+            "United Kingdom": "UK",
+            "Canada": "CA",
+            "South Africa": "SA"
+        }
+        
+        country = geo_mapping.get(geo, geo.upper())
+        
+        if country not in SUPPORTED_COUNTRIES:
+            raise HTTPException(status_code=400, detail=f"Unsupported geo '{geo}'. Must be one of: {', '.join(SUPPORTED_COUNTRIES)}")
+        
+        if not keywords or len(keywords) == 0:
+            raise HTTPException(status_code=400, detail="No keywords provided")
+        
+        # Clean and validate keywords
+        cleaned_keywords = [k.strip() for k in keywords if k.strip()]
+        if not cleaned_keywords:
+            raise HTTPException(status_code=400, detail="No valid keywords provided")
+        
+        # Get keyword volumes
+        results = get_batch_keyword_volume(cleaned_keywords, country, method)
+        
+        # Return in n8n-friendly format
+        return {
+            "success": True,
+            "country": country,
+            "method": method,
+            "total_keywords": len(cleaned_keywords),
+            "keywords": cleaned_keywords,
+            "results": results,
+            "timestamp": datetime.now().isoformat()
+        }
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
 
 @app.get("/export/csv")
 def export_csv(
@@ -303,6 +382,18 @@ def clear_cache_endpoint():
 def health_check():
     """Health check endpoint"""
     return {"status": "healthy", "service": "keyword-volume-checker"}
+
+@app.post("/n8n/test")
+def n8n_test(request: dict):
+    """
+    Test endpoint to debug n8n input format
+    """
+    return {
+        "received_data": request,
+        "data_type": type(request).__name__,
+        "keys": list(request.keys()) if isinstance(request, dict) else "Not a dict",
+        "timestamp": datetime.now().isoformat()
+    }
 
 if __name__ == "__main__":
     import uvicorn
