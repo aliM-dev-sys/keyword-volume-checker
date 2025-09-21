@@ -64,7 +64,7 @@ async def dashboard():
         </div>
 
         <script>
-            let lastResults = [];
+            var lastResults = [];
             
             // Debug: Check if JavaScript is loading
             console.log('Keyword Volume Checker JavaScript loaded successfully');
