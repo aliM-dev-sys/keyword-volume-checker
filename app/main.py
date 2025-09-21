@@ -1,5 +1,6 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 from typing import List
 import json
 import csv
@@ -14,176 +15,13 @@ app = FastAPI(
     version="1.0.0"
 )
 
+# Mount static files
+app.mount("/static", StaticFiles(directory="app/static"), name="static")
+
 @app.get("/", response_class=HTMLResponse)
 async def dashboard():
     """Simple web dashboard for testing the API"""
-    return """
-    <!DOCTYPE html>
-    <html>
-    <head>
-        <title>Keyword Volume Checker</title>
-        <style>
-            body { font-family: Arial, sans-serif; max-width: 800px; margin: 0 auto; padding: 20px; }
-            .container { background: #f5f5f5; padding: 20px; border-radius: 8px; }
-            input, select, button { padding: 10px; margin: 5px; border: 1px solid #ddd; border-radius: 4px; }
-            button { background: #007bff; color: white; cursor: pointer; }
-            button:hover { background: #0056b3; }
-            .result { margin-top: 20px; padding: 15px; background: white; border-radius: 4px; }
-            .error { color: red; }
-            .success { color: green; }
-            .batch-input { width: 100%; height: 100px; }
-        </style>
-    </head>
-    <body>
-        <div class="container">
-            <h1>🔍 Keyword Volume Checker</h1>
-            
-            <h3>Single Keyword Check</h3>
-            <input type="text" id="keyword" placeholder="Enter keyword" />
-            <select id="country">
-                <option value="US">United States</option>
-                <option value="UK">United Kingdom</option>
-                <option value="CA">Canada</option>
-                <option value="SA">South Africa</option>
-            </select>
-            <button onclick="checkSingle()">Check Volume</button>
-            
-            <h3>Batch Keywords Check</h3>
-            <textarea id="keywords" class="batch-input" placeholder="Enter keywords separated by new lines"></textarea>
-            <select id="batchCountry">
-                <option value="US">United States</option>
-                <option value="UK">United Kingdom</option>
-                <option value="CA">Canada</option>
-                <option value="SA">South Africa</option>
-            </select>
-            <button onclick="checkBatch()">Check All</button>
-            <button onclick="exportCSV()">Export CSV</button>
-            <button onclick="exportJSON()">Export JSON</button>
-            
-            <div id="result" class="result" style="display: none;"></div>
-        </div>
-
-        <script>
-            var lastResults = [];
-            
-            // Debug: Check if JavaScript is loading
-            console.log('Keyword Volume Checker JavaScript loaded successfully');
-            
-            function checkSingle() {
-                var keyword = document.getElementById('keyword').value;
-                var country = document.getElementById('country').value;
-                
-                if (!keyword) {
-                    showResult('Please enter a keyword', 'error');
-                    return;
-                }
-                
-                fetch('/check-volume?keyword=' + encodeURIComponent(keyword) + '&country=' + country)
-                    .then(function(response) {
-                        return response.json();
-                    })
-                    .then(function(data) {
-                        if (data.error) {
-                            showResult('Error: ' + data.error, 'error');
-                        } else {
-                            showResult('Keyword: ' + data.keyword + '<br>Country: ' + data.country + '<br>Volume: ' + data.volume.toLocaleString(), 'success');
-                        }
-                    })
-                    .catch(function(error) {
-                        showResult('Error: ' + error.message, 'error');
-                    });
-            }
-            
-            function checkBatch() {
-                var keywords = document.getElementById('keywords').value.split('\n').filter(function(k) { return k.trim(); });
-                var country = document.getElementById('batchCountry').value;
-                
-                console.log('Keywords:', keywords);
-                console.log('Country:', country);
-                
-                if (keywords.length === 0) {
-                    showResult('Please enter at least one keyword', 'error');
-                    return;
-                }
-                
-                fetch('/check-batch', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ keywords: keywords, country: country })
-                })
-                .then(function(response) {
-                    if (!response.ok) {
-                        return response.json().then(function(errorData) {
-                            throw new Error('HTTP ' + response.status + ': ' + (errorData.detail || errorData.message || 'Unknown error'));
-                        });
-                    }
-                    return response.json();
-                })
-                .then(function(data) {
-                    if (data.error) {
-                        showResult('Error: ' + data.error, 'error');
-                    } else {
-                        lastResults = data.results;
-                        var html = '<h4>Results:</h4><table border="1" style="width: 100%; border-collapse: collapse;"><tr><th>Keyword</th><th>Volume</th></tr>';
-                        data.results.forEach(function(result) {
-                            html += '<tr><td>' + result.keyword + '</td><td>' + result.volume.toLocaleString() + '</td></tr>';
-                        });
-                        html += '</table>';
-                        showResult(html, 'success');
-                    }
-                })
-                .catch(function(error) {
-                    showResult('Error: ' + error.message, 'error');
-                });
-            }
-            
-            function exportCSV() {
-                if (lastResults.length === 0) {
-                    showResult('No results to export. Please run a batch check first.', 'error');
-                    return;
-                }
-                
-                var csv = 'Keyword,Volume\n' + lastResults.map(function(r) { return r.keyword + ',' + r.volume; }).join('\n');
-                downloadFile(csv, 'keyword-volumes.csv', 'text/csv');
-            }
-            
-            function exportJSON() {
-                if (lastResults.length === 0) {
-                    showResult('No results to export. Please run a batch check first.', 'error');
-                    return;
-                }
-                
-                var json = JSON.stringify(lastResults, null, 2);
-                downloadFile(json, 'keyword-volumes.json', 'application/json');
-            }
-            
-            function downloadFile(content, filename, type) {
-                var blob = new Blob([content], { type: type });
-                var url = URL.createObjectURL(blob);
-                var a = document.createElement('a');
-                a.href = url;
-                a.download = filename;
-                a.click();
-                URL.revokeObjectURL(url);
-            }
-            
-            function showResult(message, type) {
-                var result = document.getElementById('result');
-                result.innerHTML = message;
-                result.className = 'result ' + type;
-                result.style.display = 'block';
-            }
-            
-            // Global error handler
-            window.onerror = function(msg, url, lineNo, columnNo, error) {
-                console.error('JavaScript Error:', msg, 'at line', lineNo, 'column', columnNo);
-                showResult('JavaScript Error: ' + msg, 'error');
-                return false;
-            };
-        </script>
-    </body>
-    </html>
-    """
+    return FileResponse("app/static/dashboard.html")
 
 @app.get("/check-volume")
 def check_volume(
