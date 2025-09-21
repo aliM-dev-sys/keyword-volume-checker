@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  keyword-volume-checker:
+    build: .
+    ports:
+      - "8001:8000"
+    environment:
+      # Data source configuration
+      - GOOGLE_TRENDS_ENABLED=${GOOGLE_TRENDS_ENABLED:-true}
+      - GOOGLE_TRENDS_TIMEOUT=${GOOGLE_TRENDS_TIMEOUT:-10}
+      - GOOGLE_TRENDS_DELAY=${GOOGLE_TRENDS_DELAY:-1.0}
+      - AMAZON_AUTOCOMPLETE_ENABLED=${AMAZON_AUTOCOMPLETE_ENABLED:-true}
+      - AMAZON_AUTOCOMPLETE_TIMEOUT=${AMAZON_AUTOCOMPLETE_TIMEOUT:-10}
+      - AMAZON_AUTOCOMPLETE_DELAY=${AMAZON_AUTOCOMPLETE_DELAY:-0.5}
+      # API configuration
+      - API_TIMEOUT=${API_TIMEOUT:-30}
+      - API_MAX_RETRIES=${API_MAX_RETRIES:-3}
+      - API_RATE_LIMIT_DELAY=${API_RATE_LIMIT_DELAY:-0.1}
+      # Cache configuration
+      - CACHE_ENABLED=${CACHE_ENABLED:-true}
+      - CACHE_TTL=${CACHE_TTL:-86400}
+      - CACHE_DB_PATH=${CACHE_DB_PATH:-data/keyword_volumes.db}
+    volumes:
+      - keyword_data:/app/data
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.keyword-checker.rule=Host(`keyword-checker.yourdomain.com`)"
+      - "traefik.http.services.keyword-checker.loadbalancer.server.port=8000"
+
+volumes:
+  keyword_data:
