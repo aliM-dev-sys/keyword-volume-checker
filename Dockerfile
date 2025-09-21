@@ -1,34 +1,30 @@
 FROM python:3.11-slim
 
-# Set working directory
 WORKDIR /app
 
 # Install system dependencies
-RUN apt-get update && apt-get install -y \
-    gcc \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+RUN apt-get update && apt-get install -y curl && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Copy requirements and install
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
-COPY ./app ./app
+# Copy app
+COPY app ./app
 
-# Create data directory for SQLite database
-RUN mkdir -p /app/data && chmod 755 /app/data
+# Create data directory
+RUN mkdir -p /app/data
 
-# Create non-root user for security
-RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
-USER app
+# Set environment variables
+ENV PYTHONPATH=/app
+ENV CACHE_DB_PATH=/app/data/keyword_volumes.db
 
 # Expose port
 EXPOSE 8001
 
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
+# Simple health check
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8001/health || exit 1
 
-# Run application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]
+# Run with error handling
+CMD ["python", "-c", "import app.main; print('App imported successfully'); import uvicorn; uvicorn.run('app.main:app', host='0.0.0.0', port=8001, log_level='debug')"]
