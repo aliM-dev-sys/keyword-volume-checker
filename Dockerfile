@@ -17,18 +17,18 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY ./app ./app
 
 # Create data directory for SQLite database
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chmod 755 /app/data
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash app && chown -R app:app /app
 USER app
 
 # Expose port
-EXPOSE 8000
+EXPOSE 8001
 
 # Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD curl -f http://localhost:8000/health || exit 1
+HEALTHCHECK --interval=30s --timeout=30s --start-period=10s --retries=3 \
+    CMD curl -f http://localhost:8001/health || exit 1
 
 # Run application
-CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8001"]

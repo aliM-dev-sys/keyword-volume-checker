@@ -23,10 +23,17 @@ keyword-volume-checker/
 ├── app/
 │   ├── __init__.py
 │   ├── main.py          # FastAPI application
-│   ├── services.py      # Keyword API logic
-│   └── config.py        # Configuration and settings
+│   ├── services.py      # Open-source data sources
+│   └── config.py        # Configuration
 ├── requirements.txt     # Python dependencies
+├── docker-compose.yml   # Docker Compose configuration
 ├── Dockerfile          # Container configuration
+├── deploy.sh           # Linux/Mac deployment script
+├── deploy.bat          # Windows deployment script
+├── test_api.py         # API testing script
+├── start.py            # Development helper script
+├── env.example         # Environment variables template
+├── N8N_INTEGRATION.md  # n8n integration guide
 └── README.md           # This file
 ```
 

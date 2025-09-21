@@ -8,7 +8,9 @@ from typing import List, Dict, Optional
 from datetime import datetime, timedelta
 from app.config import (
     SUPPORTED_COUNTRIES, 
-    API_CONFIG
+    API_CONFIG,
+    GOOGLE_TRENDS_ENABLED,
+    AMAZON_AUTOCOMPLETE_ENABLED
 )
 
 class KeywordVolumeService:
@@ -236,17 +238,19 @@ class KeywordVolumeService:
         # Try multiple methods and average the results
         volumes = []
         
-        try:
-            trends_volume = self._get_google_trends_volume(keyword, country)
-            volumes.append(trends_volume)
-        except:
-            pass
+        if GOOGLE_TRENDS_ENABLED:
+            try:
+                trends_volume = self._get_google_trends_volume(keyword, country)
+                volumes.append(trends_volume)
+            except:
+                pass
         
-        try:
-            amazon_volume = self._get_amazon_autocomplete_volume(keyword, country)
-            volumes.append(amazon_volume)
-        except:
-            pass
+        if AMAZON_AUTOCOMPLETE_ENABLED:
+            try:
+                amazon_volume = self._get_amazon_autocomplete_volume(keyword, country)
+                volumes.append(amazon_volume)
+            except:
+                pass
         
         # If no external data available, use fallback
         if not volumes:
@@ -316,9 +320,11 @@ def get_method_info() -> Dict[str, str]:
     """
     Get information about available estimation methods
     """
+    from app.config import AVAILABLE_METHODS
+    
     return {
         "current_method": "combined",
-        "available_methods": ["combined", "google_trends", "amazon_autocomplete", "fallback"],
+        "available_methods": AVAILABLE_METHODS,
         "supported_countries": SUPPORTED_COUNTRIES,
         "description": "Open-source keyword volume estimation using multiple data sources"
     }

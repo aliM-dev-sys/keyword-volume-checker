@@ -4,19 +4,9 @@ from typing import Dict
 # Supported countries
 SUPPORTED_COUNTRIES = ["US", "UK", "CA", "SA"]
 
-# Open-source data source configuration
-DATA_SOURCES = {
-    "google_trends": {
-        "enabled": os.getenv("GOOGLE_TRENDS_ENABLED", "true").lower() == "true",
-        "timeout": int(os.getenv("GOOGLE_TRENDS_TIMEOUT", "10")),
-        "rate_limit_delay": float(os.getenv("GOOGLE_TRENDS_DELAY", "1.0"))
-    },
-    "amazon_autocomplete": {
-        "enabled": os.getenv("AMAZON_AUTOCOMPLETE_ENABLED", "true").lower() == "true",
-        "timeout": int(os.getenv("AMAZON_AUTOCOMPLETE_TIMEOUT", "10")),
-        "rate_limit_delay": float(os.getenv("AMAZON_AUTOCOMPLETE_DELAY", "0.5"))
-    }
-}
+# Data source configuration
+GOOGLE_TRENDS_ENABLED = os.getenv("GOOGLE_TRENDS_ENABLED", "true").lower() == "true"
+AMAZON_AUTOCOMPLETE_ENABLED = os.getenv("AMAZON_AUTOCOMPLETE_ENABLED", "true").lower() == "true"
 
 # API configuration for external data sources
 API_CONFIG = {
@@ -32,22 +22,5 @@ CACHE_CONFIG = {
     "db_path": os.getenv("CACHE_DB_PATH", "data/keyword_volumes.db")
 }
 
-# Estimation method configuration
-ESTIMATION_METHODS = {
-    "combined": {
-        "description": "Combines Google Trends and Amazon autocomplete data",
-        "enabled": True
-    },
-    "google_trends": {
-        "description": "Uses Google Trends data for volume estimation",
-        "enabled": DATA_SOURCES["google_trends"]["enabled"]
-    },
-    "amazon_autocomplete": {
-        "description": "Uses Amazon autocomplete data for volume estimation",
-        "enabled": DATA_SOURCES["amazon_autocomplete"]["enabled"]
-    },
-    "fallback": {
-        "description": "Uses keyword analysis patterns for volume estimation",
-        "enabled": True
-    }
-}
+# Available estimation methods
+AVAILABLE_METHODS = ["combined", "google_trends", "amazon_autocomplete", "fallback"]

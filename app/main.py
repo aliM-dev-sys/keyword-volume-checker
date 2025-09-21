@@ -1,7 +1,6 @@
 from fastapi import FastAPI, Query, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.staticfiles import StaticFiles
-from typing import List, Optional
+from typing import List
 import json
 import csv
 import io

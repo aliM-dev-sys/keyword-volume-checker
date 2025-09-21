@@ -4,7 +4,7 @@ services:
   keyword-volume-checker:
     build: .
     ports:
-      - "8001:8000"
+      - "8001:8001"
     environment:
       # Data source configuration
       - GOOGLE_TRENDS_ENABLED=${GOOGLE_TRENDS_ENABLED:-true}
@@ -25,7 +25,7 @@ services:
       - keyword_data:/app/data
     restart: unless-stopped
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
       timeout: 10s
       retries: 3
