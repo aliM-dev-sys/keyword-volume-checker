@@ -66,32 +66,37 @@ async def dashboard():
         <script>
             let lastResults = [];
             
-            async function checkSingle() {
-                const keyword = document.getElementById('keyword').value;
-                const country = document.getElementById('country').value;
+            // Debug: Check if JavaScript is loading
+            console.log('Keyword Volume Checker JavaScript loaded successfully');
+            
+            function checkSingle() {
+                var keyword = document.getElementById('keyword').value;
+                var country = document.getElementById('country').value;
                 
                 if (!keyword) {
                     showResult('Please enter a keyword', 'error');
                     return;
                 }
                 
-                try {
-                    const response = await fetch(`/check-volume?keyword=${encodeURIComponent(keyword)}&country=${country}`);
-                    const data = await response.json();
-                    
-                    if (data.error) {
-                        showResult(`Error: ${data.error}`, 'error');
-                    } else {
-                        showResult(`Keyword: ${data.keyword}<br>Country: ${data.country}<br>Volume: ${data.volume.toLocaleString()}`, 'success');
-                    }
-                } catch (error) {
-                    showResult(`Error: ${error.message}`, 'error');
-                }
+                fetch('/check-volume?keyword=' + encodeURIComponent(keyword) + '&country=' + country)
+                    .then(function(response) {
+                        return response.json();
+                    })
+                    .then(function(data) {
+                        if (data.error) {
+                            showResult('Error: ' + data.error, 'error');
+                        } else {
+                            showResult('Keyword: ' + data.keyword + '<br>Country: ' + data.country + '<br>Volume: ' + data.volume.toLocaleString(), 'success');
+                        }
+                    })
+                    .catch(function(error) {
+                        showResult('Error: ' + error.message, 'error');
+                    });
             }
             
-            async function checkBatch() {
-                const keywords = document.getElementById('keywords').value.split('\n').filter(k => k.trim());
-                const country = document.getElementById('batchCountry').value;
+            function checkBatch() {
+                var keywords = document.getElementById('keywords').value.split('\n').filter(function(k) { return k.trim(); });
+                var country = document.getElementById('batchCountry').value;
                 
                 console.log('Keywords:', keywords);
                 console.log('Country:', country);
@@ -101,34 +106,35 @@ async def dashboard():
                     return;
                 }
                 
-                try {
-                    const response = await fetch('/check-batch', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ keywords, country })
-                    });
-                    
+                fetch('/check-batch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ keywords: keywords, country: country })
+                })
+                .then(function(response) {
                     if (!response.ok) {
-                        const errorData = await response.json();
-                        throw new Error(`HTTP ${response.status}: ${errorData.detail || errorData.message || 'Unknown error'}`);
+                        return response.json().then(function(errorData) {
+                            throw new Error('HTTP ' + response.status + ': ' + (errorData.detail || errorData.message || 'Unknown error'));
+                        });
                     }
-                    
-                    const data = await response.json();
-                    
+                    return response.json();
+                })
+                .then(function(data) {
                     if (data.error) {
-                        showResult(`Error: ${data.error}`, 'error');
+                        showResult('Error: ' + data.error, 'error');
                     } else {
                         lastResults = data.results;
-                        let html = '<h4>Results:</h4><table border="1" style="width: 100%; border-collapse: collapse;"><tr><th>Keyword</th><th>Volume</th></tr>';
-                        data.results.forEach(result => {
-                            html += `<tr><td>${result.keyword}</td><td>${result.volume.toLocaleString()}</td></tr>`;
+                        var html = '<h4>Results:</h4><table border="1" style="width: 100%; border-collapse: collapse;"><tr><th>Keyword</th><th>Volume</th></tr>';
+                        data.results.forEach(function(result) {
+                            html += '<tr><td>' + result.keyword + '</td><td>' + result.volume.toLocaleString() + '</td></tr>';
                         });
                         html += '</table>';
                         showResult(html, 'success');
                     }
-                } catch (error) {
-                    showResult(`Error: ${error.message}`, 'error');
-                }
+                })
+                .catch(function(error) {
+                    showResult('Error: ' + error.message, 'error');
+                });
             }
             
             function exportCSV() {
@@ -137,7 +143,7 @@ async def dashboard():
                     return;
                 }
                 
-                const csv = 'Keyword,Volume\\n' + lastResults.map(r => `${r.keyword},${r.volume}`).join('\\n');
+                var csv = 'Keyword,Volume\n' + lastResults.map(function(r) { return r.keyword + ',' + r.volume; }).join('\n');
                 downloadFile(csv, 'keyword-volumes.csv', 'text/csv');
             }
             
@@ -147,14 +153,14 @@ async def dashboard():
                     return;
                 }
                 
-                const json = JSON.stringify(lastResults, null, 2);
+                var json = JSON.stringify(lastResults, null, 2);
                 downloadFile(json, 'keyword-volumes.json', 'application/json');
             }
             
             function downloadFile(content, filename, type) {
-                const blob = new Blob([content], { type });
-                const url = URL.createObjectURL(blob);
-                const a = document.createElement('a');
+                var blob = new Blob([content], { type: type });
+                var url = URL.createObjectURL(blob);
+                var a = document.createElement('a');
                 a.href = url;
                 a.download = filename;
                 a.click();
@@ -162,11 +168,18 @@ async def dashboard():
             }
             
             function showResult(message, type) {
-                const result = document.getElementById('result');
+                var result = document.getElementById('result');
                 result.innerHTML = message;
-                result.className = `result ${type}`;
+                result.className = 'result ' + type;
                 result.style.display = 'block';
             }
+            
+            // Global error handler
+            window.onerror = function(msg, url, lineNo, columnNo, error) {
+                console.error('JavaScript Error:', msg, 'at line', lineNo, 'column', columnNo);
+                showResult('JavaScript Error: ' + msg, 'error');
+                return false;
+            };
         </script>
     </body>
     </html>
