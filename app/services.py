@@ -74,7 +74,7 @@ class KeywordVolumeService:
         conn.close()
     
     def _get_google_trends_volume(self, keyword: str, country: str) -> int:
-        """Estimate volume using Google Trends data"""
+        """Estimate volume using Google Trends data with improved scaling"""
         try:
             # Google Trends API (unofficial)
             trends_url = "https://trends.google.com/trends/api/explore"
@@ -106,8 +106,13 @@ class KeywordVolumeService:
                         volumes = [int(point["value"][0]) for point in timeline if point["value"][0] != ""]
                         if volumes:
                             avg_volume = sum(volumes) / len(volumes)
-                            # Scale to realistic search volume range
-                            return int(avg_volume * 1000)
+                            
+                            # Improved scaling based on keyword characteristics
+                            base_multiplier = self._get_volume_multiplier(keyword, country)
+                            scaled_volume = int(avg_volume * base_multiplier)
+                            
+                            # Ensure reasonable range (100 to 1,000,000)
+                            return max(100, min(scaled_volume, 1000000))
             
             return self._fallback_volume_estimate(keyword, country)
             
@@ -168,43 +173,78 @@ class KeywordVolumeService:
         }
         return marketplaces.get(country, "ATVPDKIKX0DER")
     
-    def _fallback_volume_estimate(self, keyword: str, country: str) -> int:
-        """
-        Fallback volume estimation using keyword characteristics and patterns
-        """
-        # Base volume estimation using keyword analysis
-        base_volume = 1000
+    def _get_volume_multiplier(self, keyword: str, country: str) -> int:
+        """Get volume multiplier based on keyword characteristics and country"""
+        # Base multiplier for different keyword types
+        base_multiplier = 1000  # Start with 1000x instead of 1000x
         
-        # Adjust based on keyword length (shorter keywords tend to have higher volume)
-        length_factor = max(0.3, 1.0 - (len(keyword) - 3) * 0.15)
+        # Keyword length factor (shorter = higher volume)
+        length_factor = max(0.5, 2.0 - (len(keyword.split()) - 1) * 0.3)
         
-        # Adjust based on keyword type
-        if any(word in keyword.lower() for word in ['how', 'what', 'why', 'when', 'where']):
-            base_volume *= 1.5  # Question keywords are popular
+        # High-volume keyword patterns
+        high_volume_patterns = [
+            'ai', 'artificial intelligence', 'machine learning', 'chatgpt', 'openai',
+            'crypto', 'bitcoin', 'blockchain', 'nft', 'metaverse',
+            'seo', 'marketing', 'digital marketing', 'social media',
+            'ecommerce', 'online business', 'startup', 'entrepreneur',
+            'health', 'fitness', 'diet', 'weight loss', 'workout',
+            'travel', 'vacation', 'hotel', 'flight', 'booking',
+            'technology', 'software', 'app', 'mobile', 'web development'
+        ]
         
-        if any(word in keyword.lower() for word in ['best', 'top', 'review', 'guide']):
-            base_volume *= 1.3  # Commercial intent keywords
+        # Check for high-volume patterns
+        keyword_lower = keyword.lower()
+        for pattern in high_volume_patterns:
+            if pattern in keyword_lower:
+                base_multiplier *= 2.0
+                break
         
-        if any(word in keyword.lower() for word in ['free', 'cheap', 'discount']):
-            base_volume *= 1.2  # Price-sensitive keywords
+        # Commercial intent keywords (higher volume)
+        commercial_keywords = ['buy', 'price', 'cost', 'cheap', 'discount', 'deal', 'sale', 'best', 'top', 'review']
+        if any(word in keyword_lower for word in commercial_keywords):
+            base_multiplier *= 1.5
         
-        # Adjust based on country (US typically has highest volumes)
+        # Question keywords (very high volume)
+        question_words = ['how', 'what', 'why', 'when', 'where', 'which']
+        if any(word in keyword_lower for word in question_words):
+            base_multiplier *= 2.5
+        
+        # Country multipliers (US has highest search volume)
         country_multipliers = {
             "US": 1.0,
-            "UK": 0.4,
-            "CA": 0.3,
-            "SA": 0.2
+            "UK": 0.6,
+            "CA": 0.5,
+            "SA": 0.3
         }
         
-        # Add some realistic variation
-        variation = random.uniform(0.7, 1.4)
+        # Apply all factors
+        final_multiplier = base_multiplier * length_factor * country_multipliers.get(country, 1.0)
         
-        volume = int(base_volume * length_factor * country_multipliers.get(country, 1.0) * variation)
+        # Ensure reasonable range (500 to 50000)
+        return max(500, min(int(final_multiplier), 50000))
+    
+    def _fallback_volume_estimate(self, keyword: str, country: str) -> int:
+        """
+        Improved fallback volume estimation using keyword characteristics and patterns
+        """
+        # Use the same multiplier logic as Google Trends
+        multiplier = self._get_volume_multiplier(keyword, country)
+        
+        # Base volume with more realistic ranges
+        base_volume = 10000  # Start higher
+        
+        # Apply multiplier
+        volume = int(base_volume * (multiplier / 1000))
+        
+        # Add some realistic variation (±30%)
+        variation = random.uniform(0.7, 1.3)
+        volume = int(volume * variation)
         
         # Add rate limiting
         time.sleep(self.rate_limit_delay)
         
-        return max(volume, 10)  # Minimum volume of 10
+        # Ensure reasonable range (100 to 500,000)
+        return max(100, min(volume, 500000))
     
     def get_volume_google_trends(self, keyword: str, country: str) -> int:
         """Get volume using Google Trends data"""
